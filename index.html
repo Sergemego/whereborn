@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Где ты родишься на этот раз?</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  :root {
+    --bg: #0a0e27;
+    --text: #ffffff;
+    --hint: rgba(255,255,255,0.6);
+    --btn: #ff9800;
+    --btn-text: #ffffff;
+    --secondary-bg: rgba(255,255,255,0.08);
+    --accent: #ffd54f;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: var(--tg-viewport-stable-height, 100vh);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    user-select: none;
+  }
+
+  .stars {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .stars::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: white;
+    border-radius: 50%;
+    box-shadow:
+      10vw 15vh 0 0 #fff, 25vw 40vh 0 0 #fff, 40vw 10vh 0 1px #fff,
+      55vw 70vh 0 0 #fff, 70vw 25vh 0 0 #fff, 85vw 55vh 0 1px #fff,
+      15vw 80vh 0 0 #fff, 30vw 5vh 0 0 #fff, 60vw 90vh 0 0 #fff,
+      90vw 15vh 0 0 #fff, 5vw 50vh 0 1px #fff, 75vw 75vh 0 0 #fff,
+      45vw 30vh 0 0 #fff, 20vw 60vh 0 0 #fff, 50vw 45vh 0 1px #fff,
+      95vw 40vh 0 0 #fff, 35vw 85vh 0 0 #fff, 80vw 5vh 0 0 #fff;
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 420px;
+    height: 100%;
+    min-height: var(--tg-viewport-stable-height, 100vh);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 20px 24px;
+    text-align: center;
+  }
+
+  .screen {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeIn 0.4s ease;
+  }
+  .screen.active {
+    display: flex;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  h1 {
+    font-size: 1.7rem;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 6px;
+    text-shadow: 0 0 20px rgba(255,200,50,0.35);
+  }
+  h1 .yellow { color: var(--accent); }
+  .subtitle {
+    font-size: 0.9rem;
+    color: var(--hint);
+    margin-bottom: 24px;
+  }
+
+  /* Globe */
+  .globe-wrap {
+    width: 200px;
+    height: 200px;
+    position: relative;
+    margin: 12px 0 24px;
+  }
+  .globe {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #4fc3f7 0%, #0288d1 40%, #01579b 100%);
+    box-shadow: inset -18px -18px 36px rgba(0,0,0,0.4), 0 0 36px rgba(79,195,247,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .globe.spinning {
+    animation: spinGlobe 0.7s linear infinite;
+  }
+  @keyframes spinGlobe {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+  }
+  .globe::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 40% 30% at 25% 35%, #81c784 0%, transparent 70%),
+      radial-gradient(ellipse 35% 40% at 70% 50%, #66bb6a 0%, transparent 65%),
+      radial-gradient(ellipse 25% 20% at 45% 70%, #4caf50 0%, transparent 60%),
+      radial-gradient(ellipse 30% 25% at 55% 25%, #a5d6a7 0%, transparent 55%);
+    border-radius: 50%;
+  }
+  .globe::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 15%;
+    width: 28%;
+    height: 22%;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    filter: blur(7px);
+  }
+
+  /* Map */
+  .map-container {
+    width: 100%;
+    max-width: 320px;
+    aspect-ratio: 2/1;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: #0d1b3a;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    margin: 12px 0;
+  }
+  .map-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.1s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transform-origin: center center;
+  }
+  .map-pin {
+    position: absolute;
+    width: 22px;
+    height: 33px;
+    transform: translate(-50%, -100%);
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.35s;
+  }
+  .map-pin.visible {
+    opacity: 1;
+    animation: pinDrop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes pinDrop {
+    0% { transform: translate(-50%, -180%) scale(0.4); }
+    60% { transform: translate(-50%, -90%) scale(1.1); }
+    100% { transform: translate(-50%, -100%) scale(1); }
+  }
+  .map-pin svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55)); }
+  .map-label {
+    position: absolute;
+    background: rgba(0,0,0,0.8);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 16px;
+    white-space: nowrap;
+    transform: translate(-50%, -145%);
+    opacity: 0;
+    transition: opacity 0.35s 0.25s;
+    pointer-events: none;
+  }
+  .map-label.visible { opacity: 1; }
+
+  /* Buttons */
+  .btn {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    padding: 15px 44px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 5px 18px rgba(255,152,0,0.4);
+    transition: transform 0.12s, box-shadow 0.12s;
+    margin-top: 8px;
+    min-width: 190px;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.secondary {
+    background: linear-gradient(135deg, #5c6bc0, #3949ab);
+    box-shadow: 0 5px 18px rgba(92,107,192,0.35);
+  }
+  .btn.ghost {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    box-shadow: none;
+    color: var(--text);
+    margin-top: 10px;
+  }
+
+  .city-name {
+    font-size: 1.55rem;
+    font-weight: 900;
+    color: var(--accent);
+    margin: 6px 0 2px;
+    text-shadow: 0 0 14px rgba(255,213,79,0.45);
+  }
+  .country {
+    font-size: 0.98rem;
+    opacity: 0.85;
+    margin-bottom: 10px;
+  }
+  .stats {
+    background: var(--secondary-bg);
+    border-radius: 14px;
+    padding: 12px 18px;
+    margin: 8px 0 16px;
+    width: 100%;
+    max-width: 300px;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin: 5px 0;
+  }
+  .stat-row span:last-child {
+    font-weight: 700;
+    color: #81d4fa;
+  }
+
+  .age-card {
+    background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 22px 18px;
+    width: 100%;
+    max-width: 320px;
+    margin: 12px 0;
+  }
+  .age-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff7043, #e64a19);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    padding: 5px 14px;
+    border-radius: 28px;
+    margin-bottom: 12px;
+  }
+  .problem-emoji { font-size: 2.3rem; margin-bottom: 10px; }
+  .problem-text {
+    font-size: 1.08rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .progress {
+    display: flex;
+    gap: 7px;
+    margin: 10px 0 6px;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.22);
+    transition: background 0.25s;
+  }
+  .dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 7px var(--accent);
+  }
+  .dot.done { background: #81c784; }
+
+  .final-emoji { font-size: 3.6rem; margin: 8px 0; }
+  .final-text {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    line-height: 1.4;
+  }
+  .loading-text {
+    font-size: 1.05rem;
+    font-weight: 600;
+    opacity: 0.8;
+    margin-top: 12px;
+    min-height: 1.4em;
+  }
+  .hint {
+    font-size: 0.78rem;
+    color: var(--hint);
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+  <div class="stars"></div>
+
+  <div class="container">
+    <!-- INTRO -->
+    <div class="screen active" id="screen-intro">
+      <h1>Где ты родишься<br><span class="yellow">на этот раз?</span></h1>
+      <p class="subtitle">Нажми кнопку и узнай свою судьбу</p>
+      
+      <div class="globe-wrap">
+        <div class="globe" id="intro-globe"></div>
+      </div>
+
+      <button class="btn" id="btn-birth">РОДИТЬСЯ</button>
+      <p class="hint">Шанс переродиться — 1 из миллиардов</p>
+    </div>
+
+    <!-- SPINNING -->
+    <div class="screen" id="screen-spin">
+      <h1>Ищем место...</h1>
+      <div class="globe-wrap">
+        <div class="globe spinning" id="spin-globe"></div>
+      </div>
+      <p class="loading-text" id="loading-text">Крутим Землю...</p>
+    </div>
+
+    <!-- REVEAL CITY -->
+    <div class="screen" id="screen-reveal">
+      <div class="map-container" id="map-container">
+        <img class="map-img" id="map-img" 
+             src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/World_map_-_low_resolution.svg/1280px-World_map_-_low_resolution.svg.png" 
+             alt="World map"
+             onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/BlankMap-World6.svg/1280px-BlankMap-World6.svg.png'">
+        <div class="map-pin" id="map-pin">
+          <svg viewBox="0 0 24 36" fill="none">
+            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z" fill="#e53935"/>
+            <circle cx="12" cy="12" r="5" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="map-label" id="map-label"></div>
+      </div>
+
+      <div class="city-name" id="city-name">Москва</div>
+      <div class="country" id="country">Россия</div>
+
+      <div class="stats">
+        <div class="stat-row">
+          <span>Население</span>
+          <span id="population">—</span>
+        </div>
+        <div class="stat-row">
+          <span>Шанс родиться здесь</span>
+          <span id="chance">—</span>
+        </div>
+      </div>
+
+      <button class="btn" id="btn-next-age">ДАЛЕЕ →</button>
+    </div>
+
+    <!-- AGE EVENT -->
+    <div class="screen" id="screen-age">
+      <div class="progress" id="progress"></div>
+      <div class="age-card">
+        <div class="age-badge" id="age-badge">Возраст 7</div>
+        <div class="problem-emoji" id="problem-emoji">🎒</div>
+        <div class="problem-text" id="problem-text">Ты идёшь в школу...</div>
+      </div>
+      <button class="btn" id="btn-next">ДАЛЕЕ →</button>
+    </div>
+
+    <!-- FINAL -->
+    <div class="screen" id="screen-final">
+      <div class="final-emoji">🌍</div>
+      <div class="final-text" id="final-text">
+        Ты прожил целую жизнь в этом городе!
+      </div>
+      <button class="btn" id="btn-again">РОДИТЬСЯ СНОВА</button>
+      <button class="btn secondary" id="btn-share" style="margin-top:10px;">ПОДЕЛИТЬСЯ</button>
+    </div>
+  </div>
+
+<script>
+// ===== Telegram WebApp =====
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.disableVerticalSwipes?.();
+  // Apply theme if available
+  if (tg.themeParams) {
+    const tp = tg.themeParams;
+    if (tp.bg_color) document.documentElement.style.setProperty('--bg', tp.bg_color);
+    if (tp.text_color) document.documentElement.style.setProperty('--text', tp.text_color);
+    if (tp.hint_color) document.documentElement.style.setProperty('--hint', tp.hint_color);
+    if (tp.button_color) document.documentElement.style.setProperty('--btn', tp.button_color);
+    if (tp.button_text_color) document.documentElement.style.setProperty('--btn-text', tp.button_text_color);
+    if (tp.secondary_bg_color) document.documentElement.style.setProperty('--secondary-bg', tp.secondary_bg_color);
+  }
+  // Haptic helper
+  window.haptic = (type = 'light') => {
+    try { tg.HapticFeedback.impactOccurred(type); } catch(e) {}
+  };
+} else {
+  window.haptic = () => {};
+}
+
+// ===== Cities data =====
+const CITIES = [
+  {
+    name: "Москва", country: "Россия", pop: 13100000, lat: 55.75, lng: 37.62,
+    ages: [
+      { age: 7, emoji: "🚇", text: "Первый раз один едешь в метро. Все смотрят строго." },
+      { age: 14, emoji: "📚", text: "Подготовка к ОГЭ. Репетиторы, слёзы и энергетик в 2 ночи." },
+      { age: 18, emoji: "🏠", text: "Поступаешь в универ. Жильё — это боль. Съём комнаты в Химках." },
+      { age: 25, emoji: "💼", text: "Офис в Москва-Сити. Зарплата красивая, но до дома 1,5 часа." },
+      { age: 35, emoji: "🚗", text: "Пробки. Ты уже не злишься — просто медитируешь за рулём." }
+    ]
+  },
+  {
+    name: "Тула", country: "Россия", pop: 470000, lat: 54.19, lng: 37.62,
+    ages: [
+      { age: 7, emoji: "🫖", text: "Бабушка учит пить чай из самовара. Это священный ритуал." },
+      { age: 14, emoji: "🍪", text: "Ты уже профессионально оцениваешь пряники. Знаешь все фабрики." },
+      { age: 18, emoji: "🔫", text: "Город оружейников. Все шутят про «тульский топор»." },
+      { age: 25, emoji: "🏭", text: "Работаешь на заводе или уезжаешь. Третьего почти не дано." },
+      { age: 40, emoji: "🏡", text: "У тебя уже свой дом и огород. Пряники печёшь сам." }
+    ]
+  },
+  {
+    name: "Северный Сентинел", country: "Индия (Андаманские о-ва)", pop: 120, lat: 11.56, lng: 92.24,
+    ages: [
+      { age: 5, emoji: "🏹", text: "Тебе дают первый лук. Чужаки — это плохо. Очень плохо." },
+      { age: 12, emoji: "🏝️", text: "Ты уже знаешь каждый риф вокруг острова размером с Манхэттен." },
+      { age: 18, emoji: "🚫", text: "Туристов и миссионеров отгоняете стрелами. Это традиция." },
+      { age: 30, emoji: "🌲", text: "Жизнь в полной изоляции. Интернет? Что это?" },
+      { age: 50, emoji: "👁️", text: "Ты — один из последних неконтактных людей на планете." }
+    ]
+  },
+  {
+    name: "Токио", country: "Япония", pop: 14000000, lat: 35.68, lng: 139.69,
+    ages: [
+      { age: 7, emoji: "🚃", text: "Школа + кружки + репетиторы. Свободного времени нет." },
+      { age: 14, emoji: "📖", text: "Экзамены решают всю жизнь. Давление космическое." },
+      { age: 22, emoji: "🏢", text: "Стажёр в корпорации. Работаешь допоздна. Это норма." },
+      { age: 30, emoji: "🚇", text: "Каждый день в переполненном поезде. Личное пространство — миф." },
+      { age: 40, emoji: "🍵", text: "Ты уже мастер маленьких радостей: идеальный рамен и тишина." }
+    ]
+  },
+  {
+    name: "Нью-Йорк", country: "США", pop: 8300000, lat: 40.71, lng: -74.01,
+    ages: [
+      { age: 7, emoji: "🍕", text: "Пицца — это образ жизни. Школа в Бруклине." },
+      { age: 15, emoji: "🎤", text: "Мечтаешь стать звездой. Все вокруг тоже." },
+      { age: 22, emoji: "🏙️", text: "Снимаешь крошечную квартиру за бешеные деньги." },
+      { age: 28, emoji: "💼", text: "Стартап или Wall Street. Спишь по 5 часов." },
+      { age: 40, emoji: "🗽", text: "Ты уже местный. Туристов смотришь сверху вниз." }
+    ]
+  },
+  {
+    name: "Лондон", country: "Великобритания", pop: 9000000, lat: 51.51, lng: -0.13,
+    ages: [
+      { age: 7, emoji: "☔", text: "Дождь. Снова. И снова. Зонт — лучший друг." },
+      { age: 14, emoji: "🎓", text: "Школа с формой и странными традициями." },
+      { age: 21, emoji: "🍺", text: "Универ + пабы. Классика." },
+      { age: 30, emoji: "🚇", text: "Tube в час пик — испытание характера." },
+      { age: 45, emoji: "☕", text: "Ты уже пьёшь чай как настоящий британец. С молоком." }
+    ]
+  },
+  {
+    name: "Рио-де-Жанейро", country: "Бразилия", pop: 6700000, lat: -22.91, lng: -43.17,
+    ages: [
+      { age: 7, emoji: "🏖️", text: "Пляж — это двор. Футбол с рождения." },
+      { age: 15, emoji: "💃", text: "Карнавал уже в крови. Ты умеешь двигаться." },
+      { age: 22, emoji: "🎶", text: "Музыка везде. Работаешь и танцуешь одновременно." },
+      { age: 30, emoji: "🌴", text: "Жизнь между фавелой и пляжем. Контрасты." },
+      { age: 40, emoji: "⚽", text: "Смотришь футбол как религию. Это святое." }
+    ]
+  },
+  {
+    name: "Каир", country: "Египет", pop: 10000000, lat: 30.04, lng: 31.24,
+    ages: [
+      { age: 7, emoji: "🏺", text: "Пирамиды — просто «те большие камни рядом»." },
+      { age: 14, emoji: "🐪", text: "Школа + жара + пыль. Хаос на улицах — норма." },
+      { age: 20, emoji: "🕌", text: "Город никогда не спит. Шум 24/7." },
+      { age: 30, emoji: "🚗", text: "Водить в Каире — это отдельный вид спорта." },
+      { age: 45, emoji: "🍵", text: "Чай на улице с друзьями — лучшее, что есть." }
+    ]
+  },
+  {
+    name: "Мумбаи", country: "Индия", pop: 20000000, lat: 19.08, lng: 72.88,
+    ages: [
+      { age: 7, emoji: "🚂", text: "Поезд в час пик — это навык выживания." },
+      { age: 14, emoji: "🎬", text: "Болливуд рядом. Все мечтают о славе." },
+      { age: 22, emoji: "💼", text: "Стартапы и колл-центры. Город возможностей и хаоса." },
+      { age: 30, emoji: "🏠", text: "Квартира размером с шкаф стоит как особняк." },
+      { age: 40, emoji: "🍛", text: "Еда — религия. Ты знаешь все уличные киоски." }
+    ]
+  },
+  {
+    name: "Сидней", country: "Австралия", pop: 5300000, lat: -33.87, lng: 151.21,
+    ages: [
+      { age: 7, emoji: "🦘", text: "Кенгуру и пляж. Школа заканчивается рано." },
+      { age: 15, emoji: "🏄", text: "Сёрфинг важнее учёбы. Иногда." },
+      { age: 22, emoji: "☀️", text: "Жизнь на улице. Кофе с видом на оперу." },
+      { age: 30, emoji: "🏠", text: "Цены на жильё космос. Съём — навсегда?" },
+      { age: 40, emoji: "🦈", text: "Ты уже не боишься акул. Почти." }
+    ]
+  },
+  {
+    name: "Лагос", country: "Нигерия", pop: 15000000, lat: 6.52, lng: 3.38,
+    ages: [
+      { age: 7, emoji: "⚡", text: "Электричество — лотерея. Генератор — лучший друг." },
+      { age: 14, emoji: "🚌", text: "Дорога в школу — целое приключение." },
+      { age: 22, emoji: "💡", text: "Предпринимательство с 18 лет. Здесь все hustle." },
+      { age: 30, emoji: "🎉", text: "Город энергии. Музыка, еда, люди — всё громко." },
+      { age: 40, emoji: "🏗️", text: "Строительство и рост. Город меняется на глазах." }
+    ]
+  },
+  {
+    name: "Мехико", country: "Мексика", pop: 9200000, lat: 19.43, lng: -99.13,
+    ages: [
+      { age: 7, emoji: "🌮", text: "Тако — это завтрак, обед и ужин." },
+      { age: 14, emoji: "🌋", text: "Город на высоте. Дышишь разряженным воздухом." },
+      { age: 22, emoji: "🎨", text: "Уличное искусство и история на каждом шагу." },
+      { age: 30, emoji: "🚗", text: "Пробки легендарные. Музыка в машине спасает." },
+      { age: 40, emoji: "🥳", text: "Праздники — это серьёзно. День мёртвых особенно." }
+    ]
+  },
+  {
+    name: "Берлин", country: "Германия", pop: 3700000, lat: 52.52, lng: 13.41,
+    ages: [
+      { age: 7, emoji: "🧱", text: "История города везде. Стена — уже музей." },
+      { age: 16, emoji: "🎸", text: "Андеграунд, клубы, свобода. Город для молодых." },
+      { age: 24, emoji: "🚲", text: "Велосипед — король. Машины вторичны." },
+      { age: 32, emoji: "☕", text: "Кофейни, стартапы и вечный поиск себя." },
+      { age: 45, emoji: "🌳", text: "Парки и озёра. Ты научился отдыхать по-немецки." }
+    ]
+  },
+  {
+    name: "Бангкок", country: "Таиланд", pop: 11000000, lat: 13.76, lng: 100.50,
+    ages: [
+      { age: 7, emoji: "🛕", text: "Храмы и уличная еда — часть повседневности." },
+      { age: 15, emoji: "🚤", text: "Каналы, тук-туки и хаос. Это родное." },
+      { age: 22, emoji: "🍜", text: "Лучшая уличная еда в мире. Ты эксперт." },
+      { age: 30, emoji: "💼", text: "Туризм и бизнес. Город никогда не спит." },
+      { age: 40, emoji: "🙏", text: "Уважение к старшим и спокойствие внутри хаоса." }
+    ]
+  },
+  {
+    name: "Рейкьявик", country: "Исландия", pop: 140000, lat: 64.15, lng: -21.94,
+    ages: [
+      { age: 7, emoji: "🌋", text: "Вулканы и северное сияние — просто пейзаж за окном." },
+      { age: 14, emoji: "❄️", text: "Зима длинная. Книги и горячие источники спасают." },
+      { age: 20, emoji: "🎸", text: "Маленький город с огромной музыкальной сценой." },
+      { age: 30, emoji: "🐑", text: "Все друг друга знают. Анонимность невозможна." },
+      { age: 45, emoji: "🌌", text: "Ты уже привык к 20 часам света летом и 4 зимой." }
+    ]
+  },
+  {
+    name: "Дубай", country: "ОАЭ", pop: 3500000, lat: 25.20, lng: 55.27,
+    ages: [
+      { age: 7, emoji: "🏗️", text: "Вокруг строят небоскрёбы. Песок превращается в город." },
+      { age: 14, emoji: "🌴", text: "Школа в кондиционере. На улице +45 — норма." },
+      { age: 22, emoji: "💎", text: "Роскошь везде. Даже обычная жизнь выглядит дорого." },
+      { age: 30, emoji: "✈️", text: "Аэропорт — второй дом. Мир в 4 часах лёта." },
+      { age: 40, emoji: "🏖️", text: "Искусственные острова и вечное лето. Ты привык." }
+    ]
+  },
+  {
+    name: "Санкт-Петербург", country: "Россия", pop: 5600000, lat: 59.93, lng: 30.34,
+    ages: [
+      { age: 7, emoji: "🌉", text: "Белые ночи. Ты не понимаешь, когда спать." },
+      { age: 14, emoji: "🎨", text: "Эрмитаж, дворы-колодцы и вечный дождь." },
+      { age: 18, emoji: "📚", text: "Культурная столица. Все вокруг очень умные." },
+      { age: 25, emoji: "☔", text: "Зонт и хорошее настроение — обязательный набор." },
+      { age: 35, emoji: "🎭", text: "Театры, мосты и особый питерский вайб." }
+    ]
+  },
+  {
+    name: "Найроби", country: "Кения", pop: 4700000, lat: -1.29, lng: 36.82,
+    ages: [
+      { age: 7, emoji: "🦒", text: "Жирафы могут быть за забором школы. Серьёзно." },
+      { age: 14, emoji: "🦁", text: "Национальный парк — в черте города. Это норма." },
+      { age: 22, emoji: "💻", text: "IT-хаб Африки. Стартапы растут как грибы." },
+      { age: 30, emoji: "☕", text: "Лучший кофе. И вид на Килиманджаро в ясную погоду." },
+      { age: 40, emoji: "🌍", text: "Ты — часть быстро меняющегося континента." }
+    ]
+  },
+  {
+    name: "Ванкувер", country: "Канада", pop: 675000, lat: 49.28, lng: -123.12,
+    ages: [
+      { age: 7, emoji: "🏔️", text: "Горы и океан одновременно. Красота убивает." },
+      { age: 15, emoji: "🌧️", text: "Дождь. Много дождя. Но природа того стоит." },
+      { age: 22, emoji: "🌲", text: "Хайкинг каждые выходные. Это образ жизни." },
+      { age: 30, emoji: "🏠", text: "Цены на жильё — боль. Но виды компенсируют." },
+      { age: 40, emoji: "🦅", text: "Орлы над городом. Ты уже не удивляешься." }
+    ]
+  },
+  {
+    name: "Стамбул", country: "Турция", pop: 15500000, lat: 41.01, lng: 28.98,
+    ages: [
+      { age: 7, emoji: "🕌", text: "Мечети, базары и запах специй с детства." },
+      { age: 14, emoji: "⛴️", text: "Паром через Босфор — обычный транспорт." },
+      { age: 22, emoji: "🍵", text: "Чай и разговоры. Город двух континентов." },
+      { age: 30, emoji: "🧶", text: "История на каждом углу. Ты часть империи." },
+      { age: 40, emoji: "🌅", text: "Закаты над Босфором. Лучшие в мире." }
+    ]
+  },
+  {
+    name: "Буэнос-Айрес", country: "Аргентина", pop: 3000000, lat: -34.60, lng: -58.38,
+    ages: [
+      { age: 7, emoji: "🥩", text: "Асадо — это не еда, это ритуал." },
+      { age: 15, emoji: "💃", text: "Танго. Даже если не танцуешь — чувствуешь." },
+      { age: 22, emoji: "📚", text: "Книжные магазины и ночные разговоры о жизни." },
+      { age: 30, emoji: "⚽", text: "Футбол — религия. Марадона — святой." },
+      { age: 40, emoji: "🍷", text: "Вино и ночи до утра. Город не спит." }
+    ]
+  },
+  {
+    name: "Сеул", country: "Южная Корея", pop: 9500000, lat: 37.57, lng: 126.98,
+    ages: [
+      { age: 7, emoji: "📚", text: "Учёба с раннего возраста. Хагоны ждут." },
+      { age: 15, emoji: "🎤", text: "K-pop и давление экзаменов одновременно." },
+      { age: 22, emoji: "🏢", text: "Корпоративная жизнь. Иерархия важна." },
+      { age: 30, emoji: "🍗", text: "Чикен и пиво после работы. Классика." },
+      { age: 40, emoji: "🏙️", text: "Город будущего. Технологии везде." }
+    ]
+  },
+  {
+    name: "Кейптаун", country: "ЮАР", pop: 4700000, lat: -33.92, lng: 18.42,
+    ages: [
+      { age: 7, emoji: "🐧", text: "Пингвины на пляже. Это не зоопарк — это дом." },
+      { age: 14, emoji: "🏔️", text: "Столовая гора всегда на горизонте." },
+      { age: 22, emoji: "🍷", text: "Винодельни рядом. Выходные в долинах." },
+      { age: 30, emoji: "🌊", text: "Океан с двух сторон. Красота и контрасты." },
+      { age: 40, emoji: "🌈", text: "Город надежды и сложных историй." }
+    ]
+  },
+  {
+    name: "Хельсинки", country: "Финляндия", pop: 650000, lat: 60.17, lng: 24.94,
+    ages: [
+      { age: 7, emoji: "🧊", text: "Зима. Много зимы. Сауна — спасение." },
+      { age: 14, emoji: "🌲", text: "Лес начинается сразу за городом." },
+      { age: 22, emoji: "☕", text: "Кофе и дизайн. Всё минималистично." },
+      { age: 30, emoji: "🎧", text: "Тишина ценится. Личное пространство священно." },
+      { age: 40, emoji: "❄️", text: "Ты научился любить полярную ночь." }
+    ]
+  }
+];
+
+// State
+let currentCity = null;
+let ageIndex = 0;
+const WORLD_BIRTHS_PER_YEAR = 140000000;
+
+const screens = {
+  intro: document.getElementById('screen-intro'),
+  spin: document.getElementById('screen-spin'),
+  reveal: document.getElementById('screen-reveal'),
+  age: document.getElementById('screen-age'),
+  final: document.getElementById('screen-final')
+};
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+  haptic('light');
+}
+
+function formatPop(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0','') + ' млн';
+  if (n >= 1000) return Math.round(n / 1000) + ' тыс.';
+  return n.toString();
+}
+
+function calcChance(pop) {
+  const cityBirths = Math.max(1, Math.round(pop * 0.012));
+  const chance = Math.round(WORLD_BIRTHS_PER_YEAR / cityBirths);
+  if (chance > 1000000) return '1 из ' + (chance / 1000000).toFixed(1) + ' млн';
+  if (chance > 1000) return '1 из ' + Math.round(chance / 1000) + ' тыс.';
+  return '1 из ' + chance;
+}
+
+function latLngToPercent(lat, lng) {
+  const x = (lng + 180) / 360 * 100;
+  const y = (90 - lat) / 180 * 100;
+  return { x, y };
+}
+
+function pickCity() {
+  return CITIES[Math.floor(Math.random() * CITIES.length)];
+}
+
+document.getElementById('btn-birth').addEventListener('click', startBirth);
+
+function startBirth() {
+  currentCity = pickCity();
+  ageIndex = 0;
+  haptic('medium');
+
+  showScreen('spin');
+  const loading = document.getElementById('loading-text');
+  const phrases = ['Крутим Землю...', 'Ищем свободное место...', 'Проверяем роддома...', 'Почти нашли...', 'Ещё секунду...'];
+  let i = 0;
+  loading.textContent = phrases[0];
+  const interval = setInterval(() => {
+    i++;
+    if (i < phrases.length) loading.textContent = phrases[i];
+  }, 550);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    revealCity();
+  }, 3000);
+}
+
+function revealCity() {
+  showScreen('reveal');
+  haptic('heavy');
+
+  const city = currentCity;
+  document.getElementById('city-name').textContent = city.name;
+  document.getElementById('country').textContent = city.country;
+  document.getElementById('population').textContent = formatPop(city.pop);
+  document.getElementById('chance').textContent = calcChance(city.pop);
+
+  const mapImg = document.getElementById('map-img');
+  const pin = document.getElementById('map-pin');
+  const label = document.getElementById('map-label');
+
+  pin.classList.remove('visible');
+  label.classList.remove('visible');
+  mapImg.style.transform = 'scale(1) translate(0,0)';
+
+  const { x, y } = latLngToPercent(city.lat, city.lng);
+  pin.style.left = x + '%';
+  pin.style.top = y + '%';
+  label.style.left = x + '%';
+  label.style.top = y + '%';
+  label.textContent = city.name;
+
+  setTimeout(() => {
+    const scale = 2.6;
+    const tx = 50 - x;
+    const ty = 50 - y;
+    mapImg.style.transform = `scale(${scale}) translate(${tx * 0.32}%, ${ty * 0.32}%)`;
+    setTimeout(() => {
+      pin.classList.add('visible');
+      label.classList.add('visible');
+      haptic('rigid');
+    }, 550);
+  }, 80);
+}
+
+document.getElementById('btn-next-age').addEventListener('click', () => {
+  ageIndex = 0;
+  showAge();
+});
+
+function showAge() {
+  const city = currentCity;
+  if (ageIndex >= city.ages.length) {
+    showFinal();
+    return;
+  }
+
+  showScreen('age');
+  const event = city.ages[ageIndex];
+
+  document.getElementById('age-badge').textContent = `Возраст ${event.age}`;
+  document.getElementById('problem-emoji').textContent = event.emoji;
+  document.getElementById('problem-text').textContent = event.text;
+
+  const progress = document.getElementById('progress');
+  progress.innerHTML = '';
+  city.ages.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    if (i < ageIndex) dot.classList.add('done');
+    if (i === ageIndex) dot.classList.add('active');
+    progress.appendChild(dot);
+  });
+}
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  ageIndex++;
+  showAge();
+});
+
+function showFinal() {
+  showScreen('final');
+  haptic('success');
+  document.getElementById('final-text').innerHTML =
+    `Ты прожил жизнь в <span style="color:var(--accent)">${currentCity.name}</span>!<br>Было непросто, но интересно.`;
+}
+
+document.getElementById('btn-again').addEventListener('click', () => {
+  showScreen('intro');
+});
+
+document.getElementById('btn-share').addEventListener('click', () => {
+  const text = `Я родился в ${currentCity.name}, ${currentCity.country}! А ты? 🌍\nГде ты родишься на этот раз?`;
+  
+  if (tg && tg.openTelegramLink) {
+    // Share via Telegram
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
+    tg.openTelegramLink(shareUrl);
+  } else if (navigator.share) {
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => {
+      if (tg) tg.showAlert('Текст скопирован!');
+      else alert('Текст скопирован!');
+    });
+  }
+});
+</script>
+</body>
+</html>
